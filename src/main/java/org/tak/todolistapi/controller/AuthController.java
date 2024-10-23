@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -66,7 +67,7 @@ public class AuthController {
         String jwtToken = jwtUtils.generateTokenFromUsername(userDetails);
 
         List<String> roles = userDetails.getAuthorities().stream()
-                .map(item -> item.getAuthority())
+                .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
         JwtResponse response = new JwtResponse(jwtToken, userDetails.getUsername(), roles);
@@ -90,38 +91,14 @@ public class AuthController {
             return new ResponseEntity<Object>(map, HttpStatus.BAD_REQUEST);
         }
         User user = new User(signUpRequest.getUsername(),
+                signUpRequest.getName(),
                 signUpRequest.getEmail(),
                 encoder.encode(signUpRequest.getPassword()));
-
-        Set<String> strRoles = signUpRequest.getRole();
         Set<Role> roles = new HashSet<>();
 
-        if (strRoles == null) {
-            Role userRole = roleRepository.findByRoleName(ERole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            roles.add(userRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByRoleName(ERole.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(adminRole);
-
-                        break;
-                    case "mod":
-                        Role modRole = roleRepository.findByRoleName(ERole.ROLE_MODERATOR)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(modRole);
-
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByRoleName(ERole.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(userRole);
-                }
-            });
-        }
+        Role userRole = roleRepository.findByRoleName(ERole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+        roles.add(userRole);
 
         user.setRoles(roles);
         userRepository.save(user);
@@ -143,6 +120,11 @@ public class AuthController {
         if (!encoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
             Map<String, Object> map = new HashMap<>();
             map.put("message", "Old password is incorrect");
+            map.put("status", false);
+            return new ResponseEntity<Object>(map, HttpStatus.BAD_REQUEST);
+        }else if (!changePasswordRequest.getNewPassword().equals(changePasswordRequest.getConfirmPassword())) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("message", "New password and confirm password do not match");
             map.put("status", false);
             return new ResponseEntity<Object>(map, HttpStatus.BAD_REQUEST);
         }

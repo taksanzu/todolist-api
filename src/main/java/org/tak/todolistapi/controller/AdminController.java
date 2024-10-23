@@ -1,41 +1,30 @@
 package org.tak.todolistapi.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.tak.todolistapi.dto.GroupDTO;
+import org.tak.todolistapi.dto.CategoryDTO;
+import org.tak.todolistapi.dto.TaskDTO;
 import org.tak.todolistapi.dto.UserDTO;
-import org.tak.todolistapi.service.GroupService;
+import org.tak.todolistapi.model.ERole;
+import org.tak.todolistapi.service.TaskService;
 import org.tak.todolistapi.service.UserService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
     @Autowired
-    private GroupService groupService;
-
-    @Autowired
     private UserService userService;
 
-    // Group APIs
-    @GetMapping("/groups")
-    public ResponseEntity<List<GroupDTO>> getAllGroups() {
-        return new ResponseEntity<>(groupService.getAllGroups(), HttpStatus.OK);
-    }
+    @Autowired
+    private TaskService taskService;
 
-    @PostMapping("/groups/moderator/{moderatorId}")
-    public ResponseEntity<GroupDTO> createGroup(@RequestBody GroupDTO groupDTO, @PathVariable Long moderatorId) {
-        return new ResponseEntity<>(groupService.createGroup(groupDTO, moderatorId), HttpStatus.CREATED);
-    }
-
-    @PutMapping("/groups/{id}/moderator/{moderatorId}")
-    public ResponseEntity<GroupDTO> updateGroup(@PathVariable Long id, @RequestBody GroupDTO groupDTO, @PathVariable Long moderatorId) {
-        return new ResponseEntity<>(groupService.updateGroup(id, groupDTO, moderatorId), HttpStatus.OK);
-    }
 
     // User APIs
     @GetMapping("/users")
@@ -43,18 +32,78 @@ public class AdminController {
         return new ResponseEntity<>(userService.getAllUsers(), HttpStatus.OK);
     }
 
+    @GetMapping("/users/roles/user")
+    public ResponseEntity<List<UserDTO>> getAllUsersWithRoleUser() {
+        return new ResponseEntity<>(userService.getAllUsersWithRoleUser(ERole.ROLE_USER), HttpStatus.OK);
+    }
+
     @GetMapping("/users/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
     }
 
-    @GetMapping("/users/moderator")
-    public ResponseEntity<List<UserDTO>> getAllModerators() {
-        return new ResponseEntity<>(userService.getAllModerators(), HttpStatus.OK);
+    // Category APIs
+    @GetMapping("/categories")
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        return new ResponseEntity<>(taskService.getAllCategories(), HttpStatus.OK);
     }
 
-    @PutMapping("/users/{id}/groups/{groupId}")
-    public ResponseEntity<UserDTO> updateUsers(@PathVariable Long id, @RequestBody UserDTO userDTO, @PathVariable Long groupId) {
-        return new ResponseEntity<>(userService.updateUsers(id, userDTO, groupId), HttpStatus.OK);
+    @GetMapping("/categories/{id}")
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
+        return new ResponseEntity<>(taskService.getCategoryById(id), HttpStatus.OK);
     }
+
+    @PostMapping("/categories")
+    public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
+        return new ResponseEntity<>(taskService.createCategory(categoryDTO), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryDTO categoryDTO) {
+        return new ResponseEntity<>(taskService.updateCategory(id, categoryDTO), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<Map<String, String>> deleteCategory(@PathVariable Long id) {
+        String category = taskService.deleteCategory(id);
+        Map<String, String> response = Map.of("message", category);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // Task APIs
+    @GetMapping("/tasks")
+    public ResponseEntity<List<TaskDTO>> getAllTasks(@RequestParam(required = false) Long categoryId) {
+        if (categoryId != null) {
+            return new ResponseEntity<>(taskService.getTasksByCategoryId(categoryId), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(taskService.getAllTasks(), HttpStatus.OK);
+    }
+
+    @GetMapping("/tasks/{id}")
+    public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
+        return new ResponseEntity<>(taskService.getTaskById(id), HttpStatus.OK);
+    }
+
+    @PostMapping("/tasks/categories/{id}/assign/{userId}")
+    public ResponseEntity<TaskDTO> createTask(@PathVariable Long id, @Valid @RequestBody TaskDTO taskDTO, @PathVariable Long userId) {
+        return new ResponseEntity<>(taskService.createTask(id, taskDTO, userId), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/tasks/{id}/categories/{categoryId}/assign/{userId}")
+    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id, @Valid @RequestBody TaskDTO taskDTO, @PathVariable Long categoryId, @PathVariable Long userId) {
+        return new ResponseEntity<>(taskService.updateTask(id, taskDTO, categoryId, userId), HttpStatus.OK);
+    }
+
+    @PutMapping("/tasks/{id}/done")
+    public ResponseEntity<TaskDTO> markTaskAsDone(@PathVariable Long id) {
+        return new ResponseEntity<>(taskService.markTaskAsDone(id), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/tasks/{id}")
+    public ResponseEntity<Map<String, String>> deleteTask(@PathVariable Long id) {
+        String task = taskService.deleteTask(id);
+        Map<String, String> response = Map.of("message", task);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
 }

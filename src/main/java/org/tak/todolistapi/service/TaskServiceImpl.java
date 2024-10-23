@@ -34,7 +34,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public List<CategoryDTO> getAllCategories() {
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByIsDeletedFalse();
         if (categories.isEmpty()) {
             throw new ResourceNotFoundException("No categories found");
         }
@@ -82,7 +82,8 @@ public class TaskServiceImpl implements TaskService {
     public String deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
-        categoryRepository.delete(category);
+        category.setDeleted(true);
+        categoryRepository.save(category);
         return "Category with id : " + id + " deleted successfully";
     }
 
@@ -104,7 +105,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public List<TaskDTO> getAllTasks() {
-        List<Task> tasks = taskRepository.findAll();
+        List<Task> tasks = taskRepository.findAllByDeletedFalse();
         if (tasks.isEmpty()) {
             throw new ResourceNotFoundException("No tasks found");
         }
@@ -143,12 +144,17 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public TaskDTO updateTask(Long id, TaskDTO taskDTO) {
+    public TaskDTO updateTask(Long id, TaskDTO taskDTO, Long categoryId, Long userId) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", id));
         task.setTitle(taskDTO.getTitle());
         task.setDescription(taskDTO.getDescription());
-        task.setDone(taskDTO.isDone());
+        task.setImportant(taskDTO.getImportant());
+        task.setDueDate(taskDTO.getDueDate());
+        task.setCategory(categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", categoryId)));
+        task.setAssignee(userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId)));
         task = taskRepository.save(task);
 
         TaskDTO updatedTaskDTO = modelMapper.map(task, TaskDTO.class);
@@ -160,7 +166,8 @@ public class TaskServiceImpl implements TaskService {
     public String deleteTask(Long id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", id));
-        taskRepository.delete(task);
+        task.setDeleted(true);
+        taskRepository.save(task);
         return "Task with id : " + id + " deleted successfully";
     }
 
@@ -168,7 +175,7 @@ public class TaskServiceImpl implements TaskService {
     public TaskDTO markTaskAsDone(Long id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", id));
-        task.setDone(true);
+        task.setDone(task.isDone()? false : true);
         task = taskRepository.save(task);
 
         TaskDTO taskDTO = modelMapper.map(task, TaskDTO.class);

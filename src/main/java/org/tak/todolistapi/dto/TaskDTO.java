@@ -32,6 +32,8 @@ public class TaskDTO {
 
     private Date dueDate;
 
+    private UserDTO assignee;
+
     private boolean done;
 
     @ToString.Exclude

@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,10 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
-import org.tak.todolistapi.model.ERole;
-import org.tak.todolistapi.model.Role;
-import org.tak.todolistapi.model.User;
+import org.tak.todolistapi.model.*;
+import org.tak.todolistapi.repository.CategoryRepository;
 import org.tak.todolistapi.repository.RoleRepository;
+import org.tak.todolistapi.repository.TaskRepository;
 import org.tak.todolistapi.repository.UserRepository;
 
 import java.util.List;
@@ -39,6 +40,12 @@ public class SecurityConfig {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -67,12 +74,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/user/**").hasAnyRole("USER")
                         .anyRequest().authenticated()
                 );
 
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         http.headers(headers -> headers.frameOptions(
-                frameOptions -> frameOptions.sameOrigin()));
+                HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         return http.build();
     }
@@ -100,45 +108,44 @@ public class SecurityConfig {
         return args -> {
             Role userRole = roleRepository.findByRoleName(ERole.ROLE_USER)
                     .orElseGet(() -> roleRepository.save(new Role(ERole.ROLE_USER)));
-            Role moderatorRole = roleRepository.findByRoleName(ERole.ROLE_MODERATOR)
-                    .orElseGet(() -> roleRepository.save(new Role(ERole.ROLE_MODERATOR)));
             Role adminRole = roleRepository.findByRoleName(ERole.ROLE_ADMIN)
                     .orElseGet(() -> roleRepository.save(new Role(ERole.ROLE_ADMIN)));
 
             Set<Role> userRoles = Set.of(userRole);
-            Set<Role> moderatorRoles = Set.of(moderatorRole);
-            Set<Role> adminRoles = Set.of(adminRole);
+            Set<Role> adminRoles = Set.of(userRole, adminRole);
 
-            // Create users
             if (!userRepository.existsByEmail("user")) {
-                userRepository.save(new User("user", "user@example.com", passwordEncoder.encode("user@123")));
-            }
-
-            if (!userRepository.existsByEmail("moderator")) {
-                userRepository.save(new User("moderator", "moderator@example.com", passwordEncoder.encode("moderator@123")));
+                userRepository.save(new User("user", "Name User", "user@example.com", passwordEncoder.encode("user@123")));
             }
 
             if (!userRepository.existsByEmail("admin")) {
-                userRepository.save(new User("admin", "admin@example", passwordEncoder.encode("admin@123")));
+                userRepository.save(new User("admin", "Name Admin", "admin@example", passwordEncoder.encode("admin@123")));
             }
 
-            //Update user roles
             userRepository.findByUsername("user").ifPresent(user -> {
                 user.setRoles(userRoles);
                 userRepository.save(user);
             });
 
-            //Update moderator roles
-            userRepository.findByUsername("moderator").ifPresent(user -> {
-                user.setRoles(moderatorRoles);
-                userRepository.save(user);
-            });
-
-            //Update admin roles
             userRepository.findByUsername("admin").ifPresent(user -> {
                 user.setRoles(adminRoles);
                 userRepository.save(user);
             });
+
+            if (categoryRepository.findAll().isEmpty()) {
+                categoryRepository.saveAll(List.of(
+                        new Category("Thiết kế"),
+                        new Category("Phân tích"),
+                        new Category("Lập trình")
+                ));
+            }
+            if (taskRepository.findAll().isEmpty()) {
+                taskRepository.saveAll(List.of(
+                        new Task("Thiết kế giao diện", "Thiết kế giao diện cho ứng dụng", 1, userRepository.findById(1L).get(), categoryRepository.findById(1L).get()),
+                        new Task("Phân tích yêu cầu", "Phân tích yêu cầu cho ứng dụng", 2, userRepository.findById(1L).get(), categoryRepository.findById(2L).get()),
+                        new Task("Lập trình ứng dụng", "Lập trình ứng dụng", 3, userRepository.findById(1L).get(), categoryRepository.findById(3L).get())
+                ));
+            }
         };
     }
 

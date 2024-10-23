@@ -31,6 +31,8 @@ public class Task {
 
     private boolean done = false;
 
+    private boolean isDeleted = false;
+
     @ManyToOne
     private User assignee;
 
@@ -45,4 +47,11 @@ public class Task {
     @JsonBackReference
     private Category category;
 
+    public Task(String title, String description, int important, User user, Category category) {
+        this.title = title;
+        this.description = description;
+        this.important = important;
+        this.assignee = user;
+        this.category = category;
+    }
 }

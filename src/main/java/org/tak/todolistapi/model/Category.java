@@ -31,12 +31,14 @@ public class Category {
     @UpdateTimestamp
     private Date updatedAt;
 
+    private boolean isDeleted = false;
+
     @ToString.Exclude
     @JsonIgnore
     @OneToMany(mappedBy = "category", cascade = CascadeType.PERSIST, orphanRemoval = false)
     private List<Task> tasks;
 
-    @ManyToOne
-    @JoinColumn(name = "group_id")
-    private Group group;
+    public Category(String name) {
+        this.name = name;
+    }
 }

@@ -26,7 +26,7 @@ public interface TaskService {
 
     TaskDTO createTask(Long id, @Valid TaskDTO taskDTO, Long userId);
 
-    TaskDTO updateTask(Long id, @Valid TaskDTO taskDTO);
+    TaskDTO updateTask(Long id, @Valid TaskDTO taskDTO, Long categoryId, Long userId);
 
     String deleteTask(Long id);
 
